@@ -36,8 +36,9 @@ async def create_order(saga: Context, merchantId: str, orderItems: list[OrderIte
 
     @saga.step(retry=3)
     async def save_order(orderTotal: Result[float, calc_order_total], orderId: Result[uuid.UUID, get_order_uid]) -> int:
+        
         if str(orderId) == '94f522fc-f802-54d2-a280-b62ae2fa66a4':
-            raise Exception('simylate_exception')
+            raise Exception('simulate_exception')
         else:
             _logger.info('Wait for 20 sec')
             await asyncio.sleep(20)
@@ -45,5 +46,6 @@ async def create_order(saga: Context, merchantId: str, orderItems: list[OrderIte
         async with aiofiles.open(str(orderId), mode='w',encoding='utf-8') as f:
             await f.write(json.dumps(
                 {"merchant": merchantId, "uid":str(orderId),"total": orderTotal, "items": [o.dict() for o in orderItems]}, indent=4))
+
         _logger.info(f"Successfully wrote to {str(orderId)}")
 

@@ -1,20 +1,19 @@
 from asyncio import iscoroutinefunction
-from ._context import Context
 from ._manager import Manager
 from ..context._async import AsyncContext
 
 class Orchestrator:
     def __init__(self, manager=None):
-        self.manager = manager
+        self._manager = manager
 
     def __call__(self, func):  # Decorator
         def wrapper(*args, **kwargs):
             if iscoroutinefunction(func):
                 try:
-                    ctx = AsyncContext(func, args, kwargs, manager=self.manager)
-                    if self.manager:
+                    ctx = AsyncContext(func, args, kwargs, manager=self._manager)
+                    if self._manager:
                         async def __schedule():
-                            return self.manager.schedule(ctx)
+                            return self._manager._schedule_saga(ctx, kwargs.get('_uid',None), kwargs.get('_state',None))
                         return __schedule()  # Coroutine call
                     else:
                         return ctx()  # Call AsyncContext directly
@@ -30,10 +29,10 @@ class Orchestrator:
                     return None
         return wrapper
 
-def orchestrator(func = None, manager: Manager = None):
+def orchestrator(func = None, manager: Manager = None, **kwargs):
     if func:
-        return Orchestrator(manager = manager)(func)
+        return Orchestrator(manager = manager,kwargs = kwargs)(func)
     else:
-        return Orchestrator(manager = manager)
+        return Orchestrator(manager = manager, kwargs = kwargs)
 
 __all__ = ['orchestrator']

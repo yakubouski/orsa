@@ -18,4 +18,4 @@ async def add_task():
 
 asyncio.run(add_task())
 
-mgr.stop()
+mgr.Stop()

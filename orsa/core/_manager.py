@@ -2,6 +2,7 @@ from logging import Logger
 import asyncio, threading, sys
 from typing import Any
 from uuid import UUID
+import uuid
 from ._context import Context as Saga
 from ._logger import getLogger
 import concurrent.futures
@@ -26,7 +27,7 @@ class _OnSaga():
 
         Examples:
             @manager.saga.store
-            async def _saga_store(saga: Saga)
+            async def _saga_store(self: Manager, saga: Saga)
                 StoreSaga(saga.uid, saga.state)
         """
         self._on_store = func
@@ -37,7 +38,7 @@ class _OnSaga():
 
         Examples:
             @manager.saga.complete
-            async def _saga_complete(saga: Saga)
+            async def _saga_complete(self: Manager, saga: Saga)
                 WriteSagaLog(saga.uid, saga.state,'complete')
                 DeleteSagaState(saga.uid)
         """
@@ -49,9 +50,9 @@ class _OnSaga():
 
         Examples:
             @manager.saga.abort
-            async def _saga_abort(saga: Saga)
-                WriteSagaLog(saga.uid, saga.state,'abort')
-                DeleteSagaState(saga.uid)
+            async def _saga_abort(self: Manager, saga: Saga, ex: Exception)
+                WriteSagaLog(saga.uid, saga.state,ex)
+                DeleteSagaState(saga.uid) or ResheduleSaga
         """
         self._on_abort = func
 
@@ -71,24 +72,20 @@ class Manager():
             await _call_helper(self._on_monitor[0],self)
             await asyncio.sleep(self._on_monitor[1])
 
-    def _schedule_saga(self, saga: Saga, uid: UUID = None, state: dict[str,Any] = None):
+    def _schedule_saga(self, saga: Saga):
         """
         Schedule or reschedule Saga
         """
-        if uid is not None:
-            """
-            Restore Saga state by own UID, call callback _on_restore
-            """
-            self.saga.restore(uid,state)
+        asyncio.run_coroutine_threadsafe(_call_helper(self.saga._on_store, self,saga), loop=self._event_loop)
 
         task = asyncio.run_coroutine_threadsafe(saga(), loop=self._event_loop)
         def __complete_task(future: asyncio.Future):
-            if future.cancelled:
-                self.logger.error("Saga is canceled without exception and not be run completed")
-            elif future.exception:
-                self._event_loop.run_until_complete(_call_helper(self.saga._on_abort,saga,'exception'))
+            if future.cancelled():
+                self.logger.error("Saga is terminated")      
+            elif future.exception() is not None:
+                asyncio.run_coroutine_threadsafe(_call_helper(self.saga._on_abort, self,saga,future.exception()), loop=self._event_loop)          
             else:
-                self._event_loop.run_until_complete(_call_helper(self.saga._on_complete,saga))
+                asyncio.run_coroutine_threadsafe(_call_helper(self.saga._on_complete, self,saga), loop=self._event_loop)
         task.add_done_callback(__complete_task)
 
     @property
@@ -123,11 +120,11 @@ class Manager():
                 loop.run_forever()
             except Exception as e:
                 _logger.error(f"Event loop exited unexpectedly: {e}", extra={'kind': 'manager'})
-
-            loop.run_until_complete(_call_helper(self.__on_shutdown_fn,self))
+            finally:
+                loop.run_until_complete(_call_helper(self.__on_shutdown_fn,self))
 
         self._event_loop:asyncio.AbstractEventLoop = asyncio.new_event_loop()
-        self._event_thread = threading.Thread(target=async_loop_thread, args=(self._event_loop,), daemon=False, name='manager')
+        self._event_thread = threading.Thread(target=async_loop_thread, args=(self._event_loop,), daemon=False, name='@manager')
         self._event_thread.start()
 
         # Run monitoring loop
@@ -154,7 +151,7 @@ class Manager():
             async def _startup(self)
                 _incomplete_sagas = LoadIncompleteSagas()
                 for saga in _incomplete_sagas:
-                    self._restore_saga(saga['uid'],saga['state'])
+                    _uid, _name = await self._restore_saga(saga['state'])
         """
         self.__on_startup_fn = func
 
@@ -184,9 +181,9 @@ class Manager():
         """
         Internal method to call saga commit handler
         """
-        return await _call_helper(self.saga._on_store,saga)
+        return await _call_helper(self.saga._on_store, self,saga)
 
-    async def _restore_saga(self,uid: UUID, state: dict[str,Any]):
+    async def _restore_saga(self, state: dict[str,Any]) -> tuple[uuid.UUID, str]:
         """
         Internal method to restore Saga and continue execution
         """
@@ -195,15 +192,15 @@ class Manager():
             if _module in sys.modules:
                 module = sys.modules[_module]
                 entry = getattr(module, _entry)
-                context = entry(*_args, **_kwargs)
-                return context
+                context = await entry(*_args, **_kwargs, __manager=self,__state=state)
+                return (_uid,_entry)
             else:
                 spec = importlib.util.spec_from_file_location(_module, _src)
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[spec.name] = module
                 spec.loader.exec_module(module)
 
-                entry = getattr(module, self.entry)
-                context = entry(*_args, **_kwargs, manager=self, _uid=_uid, _state=state)
+                entry = getattr(module, _entry)
+                context = await entry(*_args, **_kwargs, __manager=self,__state=state)
                 
-                return context
+                return (_uid,_entry)

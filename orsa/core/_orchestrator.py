@@ -10,10 +10,11 @@ class Orchestrator:
         def wrapper(*args, **kwargs):
             if iscoroutinefunction(func):
                 try:
-                    ctx = AsyncContext(func, args, kwargs, manager=self._manager)
-                    if self._manager:
+                    _manager = self._manager or kwargs.pop('__manager',None)
+                    ctx = AsyncContext(func, args, kwargs, manager=_manager, state = kwargs.pop('__state',None))
+                    if _manager:
                         async def __schedule():
-                            return self._manager._schedule_saga(ctx, kwargs.get('_uid',None), kwargs.get('_state',None))
+                            return _manager._schedule_saga(ctx)
                         return __schedule()  # Coroutine call
                     else:
                         return ctx()  # Call AsyncContext directly
@@ -29,10 +30,10 @@ class Orchestrator:
                     return None
         return wrapper
 
-def orchestrator(func = None, manager: Manager = None, **kwargs):
+def orchestrator(func = None, manager: Manager = None):
     if func:
-        return Orchestrator(manager = manager,kwargs = kwargs)(func)
+        return Orchestrator(manager = manager)(func)
     else:
-        return Orchestrator(manager = manager, kwargs = kwargs)
+        return Orchestrator(manager = manager)
 
 __all__ = ['orchestrator']

@@ -2,8 +2,8 @@ from asyncio import iscoroutinefunction
 from ..core._context import Context,_logger
 
 class AsyncContext(Context):
-    def __init__(self, entry, args, kwargs, manager=None):
-        super().__init__(entry, args, kwargs, manager)
+    def __init__(self, entry, args, kwargs, manager=None, state=None):
+        super().__init__(entry, args, kwargs, manager, state)
 
     async def __rollback(self, no: int, _context):
         while no > 0:
@@ -36,11 +36,18 @@ class AsyncContext(Context):
             if not isinstance(self._steps[no], Context._rollback):
                 step_name = self._steps[no]._name
                 try:
-                    _logger.debug(f"Execute", extra={'saga' : step_name, 'kind' : f"{self._name}."})
-                    result = await self._steps[no](_arguments)
-                    self._returns[step_name] = result
-                    if self._manager:
-                        self._manager._store_saga(self)
+                    if step_name not in self._returns:
+                        """
+                        Step is not executed
+                        """
+                        _logger.debug(f"Execute", extra={'saga' : step_name, 'kind' : f"{self._name}."})
+                        result = await self._steps[no](_arguments)
+                        self._returns[step_name] = result
+                        if self._manager:
+                            await self._manager._store_saga(self)
+                    else:
+                        _logger.debug(f"Restored", extra={'saga' : step_name, 'kind' : f"{self._name}."})
+
                 except Exception as ex:
                     await self.__rollback(self._step_no,_arguments)
                     if self._catch:

@@ -29,17 +29,25 @@ class Context:
             super().__init__(fn, saga, returns, retry)
             #self._step_context = (args, kwargs)
 
-    def __init__(self, entry, args, kwargs, manager = None):
+    def __init__(self, entry, args, kwargs, manager = None, state = None):
         self._entry = entry
-        self._args = args; self._kwargs = kwargs
         self._steps:list[Callee] = []
-        self._returns = {}
         self._name = self._entry.__name__
         self._step_no = None
-        self._uid = uuid4()
         self._readiness = None
         self._catch = None
         self._manager = manager
+        if state is not None:
+            self._args = state.get('@args',[])
+            self._kwargs = state.get('@kwargs',{})
+            self._uid = state.get('@uid',uuid4()) 
+            self._returns = state.get('@returns',{}) 
+        else:
+            self._args = args
+            self._kwargs = kwargs
+            self._uid = uuid4()
+            self._returns = {}
+
         self._state = {'@uid': self._uid,'@args': self._args, '@kwargs': self._kwargs, **self._get_entry_details(), '@returns': self._returns }
 
     def _expand_arguments(self,args, kwargs, fn):
@@ -68,14 +76,6 @@ class Context:
         Get Saga execution state
         """
         return self._state
-
-    def restore(self, state: dict[str, Any]):
-        """
-        Restore saga state after restart manager
-        """
-        self._uid = state.get('@uid',uuid4())
-        self._args = state.get('@args',{}); self._kwargs = state.get('@kwargs',{})
-        self._returns = state.get('@returns',{})
 
     def _get_entry_details(self):
         entrySourceFile = getsourcefile(self._entry)

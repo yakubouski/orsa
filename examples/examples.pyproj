@@ -24,10 +24,20 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="async_saga_example\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="examples.py" />
     <Compile Include="man.py" />
-    <Compile Include="ordering.py" />
-    <Compile Include="otypes.py" />
+    <Compile Include="shared\ordering.py" />
+    <Compile Include="shared\otypes.py" />
+    <Compile Include="shared\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="async_saga_example\" />
+    <Folder Include="shared\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

@@ -1,9 +1,11 @@
 import asyncio, logging, threading
+from shared.manager import manager as ManagerSaga
+from _1_sample_saga import currency_exchange as SampleSaga
+from _2_rollback_saga import currency_exchange as SampleSagaWithRollback
+#from ordering import create_order, OrderItem
 
-from ordering import create_order, OrderItem
-from man import mgr
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 async def wait_enter(prompt: str = "Нажмите Enter..."):
     loop = asyncio.get_running_loop()
@@ -11,11 +13,14 @@ async def wait_enter(prompt: str = "Нажмите Enter..."):
     await loop.run_in_executor(None, input)
 
 async def add_task():
-    await create_order("ИП Дом", [OrderItem(sku="Товар 1", cost=34.78, quantity=2.67),OrderItem(sku="Товар 2", cost=1.78, quantity=0.56)])
-    await create_order("ИП Зоо", [OrderItem(sku="Зоо Товар 1", cost=14.28, quantity=1.67),OrderItem(sku="Зоо Товар 2", cost=0.78, quantity=5.56)])
+    await SampleSaga(45.12,'USD','CNY')
+    await SampleSagaWithRollback(145.12,'USD','CNY')
+    await SampleSagaWithRollback(1003.12,'USD','CNY')
+    #await create_order("ИП Дом", [OrderItem(sku="Товар 1", cost=34.78, quantity=2.67),OrderItem(sku="Товар 2", cost=1.78, quantity=0.56)])
+    #await create_order("ИП Зоо", [OrderItem(sku="Зоо Товар 1", cost=14.28, quantity=1.67),OrderItem(sku="Зоо Товар 2", cost=0.78, quantity=5.56)])
     
     await wait_enter()
 
 asyncio.run(add_task())
 
-mgr.Stop()
+ManagerSaga.Stop()

@@ -1,7 +1,7 @@
 import orsa, asyncio, aiofiles, json, pathlib, uuid, pydantic
 from otypes import OrderItem
 
-mgr:orsa.Manager = orsa.Manager()
+manager:orsa.Manager = orsa.Manager()
 
 _sagaItems = {}
 _sagaDbFile = pathlib.Path('saga.db.json')
@@ -34,25 +34,25 @@ async def ReadDB() -> list:
             return _sagaSnapshot if type(_sagaSnapshot) == list else []
     return []
 
-@mgr.saga.store
+@manager.saga.store
 async def _saga_store(self: orsa.Manager, saga: orsa.Saga):
     _sagaItems[str(saga.uid)] = saga.state
     await WriteDB(list(_sagaItems.values()))
     
 
-@mgr.saga.abort
+@manager.saga.abort
 async def _saga_abort(self: orsa.Manager,saga: orsa.Saga, reason):
     self.logger.info(f"Saga:{saga.uid} ... aborted")
     _sagaItems.pop(str(saga.uid))
     await WriteDB(list(_sagaItems.values()))
 
-@mgr.saga.complete
+@manager.saga.complete
 async def _saga_complete(self: orsa.Manager,saga: orsa.Saga):
     self.logger.info(f"Saga:{saga.uid} ... complete")
     _sagaItems.pop(str(saga.uid))
     await WriteDB(list(_sagaItems.values()))
 
-@mgr.startup
+@manager.startup
 async def _startup(self: orsa.Manager):
     _sagaItems = {_state['@uid']: _state for _state in await ReadDB()}
     for _uid, _state in _sagaItems.items():
@@ -60,13 +60,13 @@ async def _startup(self: orsa.Manager):
         self.logger.debug(f"Saga:{_name} with {_uid} ... is restored")
     self.logger.debug(f"Manager is started")
 
-@mgr.shutdown
+@manager.shutdown
 async def _shutdown(self):
     self.logger.debug(f"Manager is shutdown")
 
-@mgr.monitor(timeout=20.0)
+@manager.monitor(timeout=20.0)
 async def _monitor(self):
     tasks = asyncio.all_tasks(asyncio.get_running_loop())
     self.logger.debug(f"@RUNNING: {[task.get_name() for task in tasks if task.get_name() != '@monitoring']}",extra={'kind':'manager'})
 
-mgr.Start()
+manager.Start()

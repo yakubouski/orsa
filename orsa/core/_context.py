@@ -1,5 +1,5 @@
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 from ._callee import Callee
 from ._types import Retry
 from datetime import datetime
@@ -29,18 +29,28 @@ class Context:
             super().__init__(fn, saga, returns, retry)
             #self._step_context = (args, kwargs)
 
-    def __init__(self, entry, manager = None):
+    def __init__(self, entry, args, kwargs, manager = None, state = None):
         self._entry = entry
         self._steps:list[Callee] = []
-        self._returns = {}
         self._name = self._entry.__name__
         self._step_no = None
-        self._uid = uuid4()
-        self._lifespan = None
+        self._readiness = None
         self._catch = None
         self._manager = manager
+        if state is not None:
+            self._args = state.get('@args',[])
+            self._kwargs = state.get('@kwargs',{})
+            self._uid = state.get('@uid',uuid4()) 
+            self._returns = state.get('@returns',{}) 
+        else:
+            self._args = args
+            self._kwargs = kwargs
+            self._uid = uuid4()
+            self._returns = {}
 
-    def _expand_arguments(self,args, kwargs, fn):
+        self._state = {'@uid': self._uid,'@args': self._args, '@kwargs': self._kwargs, **self._get_entry_details(), '@returns': self._returns }
+
+    def _expand_arguments(self, args, kwargs, fn):
         _expand_arguments = {**kwargs}
         for narg in range(len(args)):
             params = list(signature(fn).parameters.keys())
@@ -48,59 +58,30 @@ class Context:
                 _expand_arguments[params[narg]] = arg
         return _expand_arguments
 
-#    @property
-#    def current(self) -> Callee:
-#        """
-#        Saga current step execution context
-#        """
-#        return self._steps[self._step_no] if self._step_no is not None and (self._step_no>=0 and self._step_no < len(self._steps)) else None
-#
+    @staticmethod
+    def _expand_module_entry(state: dict[str,Any]) -> tuple[str]:
+        return (state.get('@uid',None),state.get('@args',None),state.get('@kwargs',None),
+                state.get('@src',None),state.get('@entry',None),state.get('@module',None))
+
+    @property
+    def uid(self) -> UUID:
+        """
+        Get Saga UUID
+        """
+        return self._uid
+
+    @property
+    def state(self) -> dict[str,Any]:
+        """
+        Get Saga execution state
+        """
+        return self._state
+
     def _get_entry_details(self):
         entrySourceFile = getsourcefile(self._entry)
         entryName = self._entry.__name__
         entryModule = self._entry.__module__
-        return (entrySourceFile,entryName,entryModule)
-
-    #def _complete_run(self):
-    #    """
-    #    Notify manager after complete execute all saga steps
-    #    """
-    #    if self._manager:
-    #        self._manager._onCompleteSaga(self.uid, self.name)
-    #
-    #def _commit_step(self, step_name: str, result):
-    #    """
-    #    Save step result
-    #    """
-    #    if self._manager:
-    #        self._manager._onCommitSaga(self.uid, self.name, step_name, result)
-    #
-    #def _is_step_completed(self, step_name: str) -> bool|None:
-    #    """
-    #    Check is step completed
-    #    """
-    #    if self._manager:
-    #        return self._manager._onIsStepCompleted(self.uid, self.name, step_name)
-    #
-    #    return None
-    #
-    #def _get_step_result(self, step_name: str) -> Any|None:
-    #    """
-    #    Check is step completed
-    #    """
-    #    if self._manager:
-    #        return self._manager._onGetStepResult(self.uid, self.name, step_name)
-    #
-    #    return None
-    #
-    #def _raise_step(self, step_name: str, ex):
-    #    """
-    #    Step exception raised
-    #    """
-    #    if self._catch:
-    #        self._catch(step_name, ex)
-    #    if self._manager:
-    #        self._manager._onRaiseSaga(self.uid, self.name, step_name, ex)
+        return {'@src': entrySourceFile,'@entry': entryName,'@module': entryModule}
 
     def step(self, fn = None, retry: Retry | int = None):
         """
@@ -120,7 +101,7 @@ class Context:
 
     def rollback(self, fn = None, retry: Retry | int = None):
         """
-        Decorator for declare Saga Step Rollback
+        Decorator for declare Rollback for previous Step Saga
         """
         stepFor = None
         for stp in reversed(self._steps):
@@ -140,12 +121,12 @@ class Context:
             self._steps.append(self._rollback(fn, self._name, self._returns, (), {}, retry))
             return fn
 
-    def lifespan(self, fn):
+    def readiness(self, fn):
         """
-        Decorator for declare Saga lifespan
+        Decorator for declare Saga readiness callback, executing before start saga
         """
         _logger.debug(f"Register lifespan `{fn.__name__}`", extra={'saga' : self._name, 'kind' : 'orchestrator '})
-        self._lifespan = fn
+        self._readiness = fn
 
     def catch(self, fn):
         """

@@ -1,15 +1,15 @@
 import asyncio,aiofiles
 from logging import Logger
 import uuid, json, threading
-from orsa import orchestrator, Context, Result, logger
+from orsa import orchestrator, Saga, Result, logger
 from otypes import OrderItem
 from man import mgr
 
 _logger:Logger = logger()
 
 @orchestrator(manager=mgr)
-async def create_order(saga: Context, merchantId: str, orderItems: list[OrderItem]):
-    @saga.lifespan
+async def create_order(saga: Saga, merchantId: str, orderItems: list[OrderItem]):
+    @saga.readiness
     async def check_services():
         _logger.info(f"[{threading.get_ident()}] Wait for other services is startup")
         await asyncio.sleep(3)
@@ -36,14 +36,16 @@ async def create_order(saga: Context, merchantId: str, orderItems: list[OrderIte
 
     @saga.step(retry=3)
     async def save_order(orderTotal: Result[float, calc_order_total], orderId: Result[uuid.UUID, get_order_uid]) -> int:
+        
         if str(orderId) == '94f522fc-f802-54d2-a280-b62ae2fa66a4':
-            raise Exception('simylate_exception')
+            raise Exception('simulate_exception')
         else:
-            _logger.info('Wait for 20 sec')
-            await asyncio.sleep(20)
+            _logger.info('Wait for 60 sec')
+            await asyncio.sleep(60)
 
         async with aiofiles.open(str(orderId), mode='w',encoding='utf-8') as f:
             await f.write(json.dumps(
                 {"merchant": merchantId, "uid":str(orderId),"total": orderTotal, "items": [o.dict() for o in orderItems]}, indent=4))
+
         _logger.info(f"Successfully wrote to {str(orderId)}")
 

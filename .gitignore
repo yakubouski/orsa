@@ -17,6 +17,7 @@
 mono_crash.*
 
 # Build results
+[Dd]ist/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -44,7 +45,7 @@ Generated\ Files/
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
-
+*.egg-info
 # NUnit
 *.VisualState.xml
 TestResult.xml

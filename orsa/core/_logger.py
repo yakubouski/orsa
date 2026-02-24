@@ -1,19 +1,5 @@
 import logging
-import socket
 import sys
-
-class __log_filter(logging.Filter):
-    def __init__(self):
-        super().__init__()
-        self.host = socket.gethostname()
-
-    def set_ip(self, host: str):
-        self.host = host
-
-    def filter(self, record):
-        record.host = self.host
-        return True
-
 
 RESET = "\x1b[0m"
 COLORS = {
@@ -43,7 +29,6 @@ class __log_formater(logging.Formatter):
             record.levelname = levelname
 
 def getLogger(name, colored = True) -> logging.Logger:
-    #_logHandler.addFilter(__log_filter())    
     _logger = logging.getLogger(name)
     if not _logger.handlers:
         _logHandler = logging.StreamHandler()

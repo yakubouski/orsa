@@ -1,9 +1,9 @@
 name: Upload Python Package
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+#  push:
+#    tags:
+#      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       target:
@@ -28,8 +28,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Get version (release)
-        if: (github.event_name == 'push') || (github.event_name == 'release')
+      - name: Get version (using TAG)
+        if: (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pypi')
         id: get_version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
@@ -37,10 +37,10 @@ jobs:
           echo "VERSION_TAG=$VERSION" >> $GITHUB_ENV
 
       - name: Get version (manual)
-        if: (github.event_name == 'workflow_dispatch')
+        if: (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'testpypi')
         id: get_version_manual
         run: |
-          VERSION="0.0"
+          VERSION="0.0.1"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION_TAG=$VERSION" >> $GITHUB_ENV
           echo "BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
@@ -80,16 +80,16 @@ jobs:
           path: dist/
 
       - name: Publish distributions to PyPI
-        if: (github.event_name == 'push' && github.event.inputs.target == 'pypi') || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pypi')
+        if: (github.event.inputs.target == 'pypi')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
-          repository-url: https://pypi.org/legacy/
+          repository-url: https://upload.pypi.org/legacy/
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Publish distributions to TestPyPI
-        if: (github.event_name == 'push' && github.event.inputs.target == 'testpypi') || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'testpypi')
+        if: (github.event.inputs.target == 'testpypi')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/

@@ -1,11 +1,11 @@
 import httpx
 from logging import getLogger
 from orsa import orchestrator, Saga, Result
-from .shared import manager as SagaManager
+from shared.manager import manager as SagaManager
 
 _logger = getLogger('EXAMPLES')
 
-@orchestrator(SagaManager)
+@orchestrator(manager=SagaManager)
 async def currency_exchange(saga: Saga, amount: float, fromCurrency: str, toCurrency: str):
     """
     Sample Saga. Exchange from currencies

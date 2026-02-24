@@ -1,5 +1,5 @@
 import orsa, asyncio, aiofiles, json, pathlib, uuid, pydantic
-from otypes import OrderItem
+from shared.otypes import OrderItem
 
 manager:orsa.Manager = orsa.Manager()
 

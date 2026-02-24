@@ -50,7 +50,7 @@ class Context:
 
         self._state = {'@uid': self._uid,'@args': self._args, '@kwargs': self._kwargs, **self._get_entry_details(), '@returns': self._returns }
 
-    def _expand_arguments(self,args, kwargs, fn):
+    def _expand_arguments(self, args, kwargs, fn):
         _expand_arguments = {**kwargs}
         for narg in range(len(args)):
             params = list(signature(fn).parameters.keys())

@@ -1,9 +1,10 @@
 name: Upload Python Package
 
 on:
-#  push:
-#    tags:
-#      - 'v*.*.*'
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*'
   workflow_dispatch:
     inputs:
       target:
@@ -29,7 +30,7 @@ jobs:
           python-version: "3.12"
 
       - name: Get version (using TAG)
-        if: (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pypi')
+        if: (github.event_name == 'push')
         id: get_version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
@@ -80,7 +81,7 @@ jobs:
           path: dist/
 
       - name: Publish distributions to PyPI
-        if: (github.event.inputs.target == 'pypi')
+        if: (github.event_name == 'push' || github.event.inputs.target == 'pypi')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/

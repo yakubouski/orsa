@@ -20,12 +20,25 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Get version from tag
+      - name: Get version (release)
+        if: (github.event_name == 'push')
         id: get_version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION_TAG=$VERSION" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+          echo "FULL_VERSION=$VERSION.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+
+      - name: Get version (manual)
+        if: (github.event_name == 'workflow_dispatch')
+        id: get_version_manual
+        run: |
+          VERSION="0.1.2"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_TAG=$VERSION" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+          echo "FULL_VERSION=$VERSION.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
           
       - name: Update version in __init__.py
         run: |

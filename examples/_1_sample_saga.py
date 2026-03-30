@@ -1,3 +1,4 @@
+from typing import Annotated
 import httpx
 from logging import getLogger
 from orsa import orchestrator, Saga, Result
@@ -19,7 +20,7 @@ async def currency_exchange(saga: Saga, amount: float, fromCurrency: str, toCurr
             return { cur['Cur_Abbreviation']: (cur['Cur_OfficialRate'],cur['Cur_Scale']) for cur in data }
 
     @saga.step
-    def convert_to_base_currency(ExchRates: Result[dict[str,tuple[float,float]], get_exchange_rates]) -> float:
+    def convert_to_base_currency(ExchRates: Annotated[dict[str,tuple[float,float]], get_exchange_rates]) -> float:
         _rate, _scale = ExchRates[fromCurrency]
         _baseAmount = amount * (_rate / _scale)
 

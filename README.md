@@ -17,6 +17,9 @@ It enables coordination of complex business transactions spanning multiple servi
 
 * **Readiness Probe Before Saga Execution** - Pre-execution system readiness checks with automatic dependency and resource discovery
 
+### TODO
+* Step executioin flow control (`saga.goto(step_name)`)
+ 
 ### Example
 
 `saga_example.py`

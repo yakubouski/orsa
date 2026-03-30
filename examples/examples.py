@@ -12,7 +12,7 @@ async def wait_enter(prompt: str = "Нажмите Enter..."):
     await loop.run_in_executor(None, input)
 
 async def add_task():
-    await SampleSaga(45.12,'USD','CNY')
+    exch, amount, frm, to = await SampleSaga(45.12,'USD','CNY')
     await SampleSagaWithRollback(145.12,'USD','CNY')
     
     try:

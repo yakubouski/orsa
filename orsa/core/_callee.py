@@ -1,4 +1,4 @@
-from typing import get_type_hints, get_args, get_origin
+from typing import Annotated, get_type_hints, get_args, get_origin
 from inspect import signature, iscoroutinefunction
 from asyncio import sleep as async_sleep
 from time import sleep as sync_sleep
@@ -35,7 +35,7 @@ class Callee:
         """
         kwargs = {**context}
         for vn, tp in get_type_hints(self._fn, include_extras=True).items():
-            if get_origin(tp) is Result:
+            if get_origin(tp) is Result or get_origin(tp) is Annotated:
                 _type, _step = get_args(tp)
                 kwargs[vn] = self._returns.get(_step.__name__,None)
         sig = signature(self._fn)

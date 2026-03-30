@@ -1,4 +1,4 @@
-from asyncio import iscoroutinefunction
+from asyncio import iscoroutinefunction, get_running_loop, create_task
 from ._manager import Manager
 from ..context._async import AsyncContext
 
@@ -17,7 +17,9 @@ class Orchestrator:
                             return _manager._schedule_saga(ctx)
                         return __schedule()  # Coroutine call
                     else:
-                        return ctx()  # Call AsyncContext directly
+                        fut = get_running_loop().create_future()
+                        create_task(ctx(fut))
+                        return fut
                 except Exception as e:
                     print(f"Error orchestrating coroutine {func.__name__}: {e}") # Add error handling
                     return None # Return None in case of error

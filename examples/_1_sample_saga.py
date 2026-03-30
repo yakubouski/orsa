@@ -5,7 +5,7 @@ from orsa import orchestrator, Saga, Result
 _logger = getLogger('EXAMPLES')
 
 @orchestrator
-async def currency_exchange(saga: Saga, amount: float, fromCurrency: str, toCurrency: str):
+async def currency_exchange(saga: Saga, amount: float, fromCurrency: str, toCurrency: str) -> tuple[float,float,str,str]:
     """
     Sample Saga. Exchange from currencies
     """
@@ -37,4 +37,4 @@ async def currency_exchange(saga: Saga, amount: float, fromCurrency: str, toCurr
 
         _logger.info("Convert %.3f (%s) to %.3f (%s)",amount, fromCurrency, _dstAmount, toCurrency)
 
-        return _dstAmount
+        return (_dstAmount,amount,fromCurrency,toCurrency)

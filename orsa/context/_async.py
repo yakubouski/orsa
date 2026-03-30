@@ -1,4 +1,4 @@
-from asyncio import iscoroutinefunction
+from asyncio import Future, iscoroutinefunction
 from ..core._context import Context,_logger
 
 class AsyncContext(Context):
@@ -17,7 +17,8 @@ class AsyncContext(Context):
                     _logger.error(f"Rollback error at step {no}", exc_info=ex, extra={'saga': self._steps[no]._name, 'kind' : f'{self._name}.'})
         self._step_no = None
 
-    async def __call__(self):
+    async def __call__(self, future: Future = None):
+        self._future = future
         await self._run(self._args, self._kwargs)
 
     async def _run(self, args, kwargs):
@@ -31,6 +32,7 @@ class AsyncContext(Context):
 
     async def _execute(self, args, kwargs):
         _arguments = self._expand_arguments(args, kwargs, self._entry)
+        _return = None
         for no in range(len(self._steps)):
             self._step_no = no
             if not isinstance(self._steps[no], Context._rollback):
@@ -41,8 +43,8 @@ class AsyncContext(Context):
                         Step is not executed
                         """
                         _logger.debug(f"Execute", extra={'saga' : step_name, 'kind' : f"{self._name}."})
-                        result = await self._steps[no](_arguments)
-                        self._returns[step_name] = result
+                        _return = await self._steps[no](_arguments)
+                        self._returns[step_name] = _return
                         if self._manager:
                             await self._manager._store_saga(self)
                     else:
@@ -57,3 +59,6 @@ class AsyncContext(Context):
                             self._catch(step_name, ex)
                     raise
         self._step_no = None
+        if self._future:
+            self._future.set_result(_return)
+        return _return

@@ -77,7 +77,6 @@ class Manager():
         Schedule or reschedule Saga
         """
         asyncio.run_coroutine_threadsafe(_call_helper(self.saga._on_store, self,saga), loop=self._event_loop)
-
         task = asyncio.run_coroutine_threadsafe(saga(), loop=self._event_loop)
         def __complete_task(future: asyncio.Future):
             if future.cancelled():

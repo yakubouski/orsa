@@ -57,6 +57,8 @@ class AsyncContext(Context):
                             await self._catch(step_name, ex)
                         else:
                             self._catch(step_name, ex)
+                    if self._future:
+                        self._future.set_exception(ex)
                     raise
         self._step_no = None
         if self._future:
